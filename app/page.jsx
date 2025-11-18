@@ -1,44 +1,39 @@
 "use client";
+
 import { useState } from "react";
 
 export default function Home() {
   const [prompt, setPrompt] = useState("");
-  const [videoUrl, setVideoUrl] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [videoUrl, setVideoUrl] = useState("");
 
-  async function gerar() {
-    setLoading(true);
+  const generateVideo = async () => {
     const res = await fetch("/api/video", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ prompt }),
     });
-
-    const blob = await res.blob();
-    const url = URL.createObjectURL(blob);
-    setVideoUrl(url);
-    setLoading(false);
-  }
+    const data = await res.json();
+    if (data.videoUrl) setVideoUrl(data.videoUrl);
+    else alert(data.error || "Erro ao gerar vídeo");
+  };
 
   return (
-    <main style={{ padding: "2rem", fontFamily: "sans-serif" }}>
-      <h1>Videy, made by Vilor</h1>
-
+    <div style={{ padding: "2rem" }}>
+      <h1>Videy</h1>
       <input
+        type="text"
+        placeholder="Digite o prompt"
         value={prompt}
         onChange={(e) => setPrompt(e.target.value)}
-        placeholder="Digite seu prompt..."
-        style={{ width: "300px", padding: "0.5rem" }}
+        style={{ width: "300px", padding: "0.5rem", marginRight: "1rem" }}
       />
-      <button onClick={gerar} style={{ marginLeft: 10 }}>
-        {loading ? "Gerando..." : "Gerar Vídeo"}
-      </button>
+      <button onClick={generateVideo}>Gerar Vídeo</button>
 
       {videoUrl && (
         <div style={{ marginTop: "2rem" }}>
-          <video src={videoUrl} controls width={720} />
+          <video src={videoUrl} controls width={480} />
         </div>
       )}
-    </main>
+    </div>
   );
 }
