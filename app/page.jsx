@@ -4,22 +4,38 @@ import { useState } from "react";
 
 export default function Home() {
   const [prompt, setPrompt] = useState("");
-  const [videoUrl, setVideoUrl] = useState("");
+  const [videoSrc, setVideoSrc] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const generateVideo = async () => {
-    const res = await fetch("/api/video", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ prompt }),
-    });
-    const data = await res.json();
-    if (data.videoUrl) setVideoUrl(data.videoUrl);
-    else alert(data.error || "Erro ao gerar vídeo");
+    if (!prompt.trim()) return alert("Digite um prompt!");
+
+    setLoading(true);
+    setVideoSrc("");
+
+    try {
+      const res = await fetch("/api/video", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt }),
+      });
+      const data = await res.json();
+
+      if (data.videoBase64) {
+        setVideoSrc(`data:video/mp4;base64,${data.videoBase64}`);
+      } else {
+        alert(data.error || "Erro ao gerar vídeo");
+      }
+    } catch (err) {
+      alert("Erro no servidor: " + err.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <div style={{ padding: "2rem" }}>
-      <h1>Videy</h1>
+      <h1>Video AI Studio</h1>
       <input
         type="text"
         placeholder="Digite o prompt"
@@ -27,11 +43,13 @@ export default function Home() {
         onChange={(e) => setPrompt(e.target.value)}
         style={{ width: "300px", padding: "0.5rem", marginRight: "1rem" }}
       />
-      <button onClick={generateVideo}>Gerar Vídeo</button>
+      <button onClick={generateVideo} disabled={loading}>
+        {loading ? "Gerando..." : "Gerar Vídeo"}
+      </button>
 
-      {videoUrl && (
+      {videoSrc && (
         <div style={{ marginTop: "2rem" }}>
-          <video src={videoUrl} controls width={480} />
+          <video src={videoSrc} controls width={480} />
         </div>
       )}
     </div>
