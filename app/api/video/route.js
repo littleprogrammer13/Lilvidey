@@ -10,33 +10,29 @@ export async function POST(req) {
       return NextResponse.json({ error: "Prompt é obrigatório" }, { status: 400 });
     }
 
-    const fps = 30;      // Frames por segundo
-    const seconds = 10;  // Duração máxima do vídeo
-    const keyFrames = 12; // Frames-chave iniciais
+    const fps = 30;
+    const seconds = 10;
+    const keyFrames = 12;
 
-    // 1️⃣ Gerar frames reais a partir do prompt
+    // Gerar frames iniciais
     const frames = [];
     for (let i = 0; i < keyFrames; i++) {
-      const frameBuffer = await fetchFrame(prompt);
-      frames.push(frameBuffer);
+      frames.push(await fetchFrame(prompt));
     }
 
-    // 2️⃣ Interpolar frames para atingir fps * duração
-    const totalFrames = fps * seconds;
-    const allFrames = interpolateFrames(frames, totalFrames);
+    // Interpolação para FPS total
+    const allFrames = interpolateFrames(frames, fps * seconds);
 
-    // 3️⃣ Inicializar ffmpeg.wasm
+    // Inicializar ffmpeg
     const ffmpeg = createFFmpeg({ log: true });
     await ffmpeg.load();
 
-    // 4️⃣ Salvar todos os frames no filesystem virtual
-    let i = 0;
-    for (const frame of allFrames) {
-      ffmpeg.FS("writeFile", `frame${i}.png`, await fetchFile(frame));
-      i++;
+    // Salvar frames
+    for (let i = 0; i < allFrames.length; i++) {
+      ffmpeg.FS("writeFile", `frame${i}.png`, await fetchFile(allFrames[i]));
     }
 
-    // 5️⃣ Criar vídeo MP4
+    // Criar vídeo
     await ffmpeg.run(
       "-framerate",
       `${fps}`,
@@ -49,15 +45,10 @@ export async function POST(req) {
       "output.mp4"
     );
 
-    // 6️⃣ Ler arquivo final
     const data = ffmpeg.FS("readFile", "output.mp4");
+    const videoBase64 = Buffer.from(data).toString("base64");
 
-    // 7️⃣ Converter para Uint8Array e base64 para o frontend
-    const videoBlob = new Blob([data.buffer], { type: "video/mp4" });
-    const videoUrl = URL.createObjectURL(videoBlob);
-
-    // Retornar URL do vídeo para o frontend
-    return NextResponse.json({ videoUrl });
+    return NextResponse.json({ videoBase64 });
   } catch (err) {
     console.error(err);
     return NextResponse.json({ error: err.message }, { status: 500 });
